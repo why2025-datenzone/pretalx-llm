@@ -10,7 +10,7 @@
     {% else %}
         {{ submission.anonymised.title|default:submission.title }}
     {% endif %}
-</a> 
+</a>
 {% if show_review_scores %}
     {% if can_see_all_reviews %}
         <i class="fa fa-star" style="font-family: ForkAwesome;" aria-hidden="true"></i>
@@ -19,7 +19,7 @@
             {% for score in submission.independent_scores %}
                 {% if score is None %}-{% else %}{{ score }}{% endif %}{% if not forloop.last %}, {% endif %}
             {% endfor %}
-        ){% endif %}
+            ){% endif %}
     {% endif %}
     {% if can_review or submissions_reviewed %}
         <i class="fa fa-star-o" style="font-family: ForkAwesome;" aria-hidden="true"></i>
@@ -28,7 +28,7 @@
             {% for score in submission.independent_scores %}
                 {% if score is None %}-{% else %}{{ score }}{% endif %}{% if not forloop.last %}, {% endif %}
             {% endfor %}
-        ){% endif %}
+            ){% endif %}
     {% endif %}
 {% endif %}
 {% if show_review_numbers %}
@@ -36,11 +36,11 @@
     {{ submission.review_nonnull_count|default:"-" }}
     {% if submission.review_count != submission.review_nonnull_count %}({{ submission.review_count|default:"-" }}){% endif %}
 {% endif %}
-    {% if submission.pk in submissions_reviewed %}
-        <i class="fa fa-check text-success" style="font-family: ForkAwesome;" title="{% translate "You have reviewed this proposal" %}"></i>
-    {% elif request.user in submission.speakers.all %}
-        <i class="fa fa-check text-muted" style="font-family: ForkAwesome;" title="{% translate "You cannot review this proposal" %}"></i>
-    {% endif %}
-    {% if submission.is_assigned %}
-        <i class="fa fa-star text-warning" style="font-family: ForkAwesome;" title="{% translate "You have been assigned to this proposal" %}"></i>
-    {% endif %}
+{% if submission.pk in submissions_reviewed %}
+    <i class="fa fa-check text-success" style="font-family: ForkAwesome;" title="{% translate "You have reviewed this proposal" %}"></i>
+{% elif request.user in submission.speakers.all %}
+    <i class="fa fa-check text-muted" style="font-family: ForkAwesome;" title="{% translate "You cannot review this proposal" %}"></i>
+{% endif %}
+{% if submission.is_assigned %}
+    <i class="fa fa-star text-warning" style="font-family: ForkAwesome;" title="{% translate "You have been assigned to this proposal" %}"></i>
+{% endif %}

@@ -20,7 +20,7 @@
 
 {% block content %}
     {% has_perm "orga.perform_reviews" request.user request.event as can_review %}
-    
+
     {% include "pretalx_llm/llm_graph_form.html" %}
 
     <div id="stats">
@@ -36,5 +36,5 @@
         </div>
 
     </div>
-    
+
 {% endblock content %}

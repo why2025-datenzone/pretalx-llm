@@ -7,18 +7,18 @@
     <legend>Enabled Models</legend>
     <form method="POST">
         {% csrf_token %}
-        
+
         {% for model in models %}
             <div class="form-check">
                 <input type="hidden" name="name_{{ forloop.counter0 }}" value="{{model.name}}"/>
                 <input class="form-check-input" type="checkbox" {% if model.active is not False %}checked{%endif %} id="check_{{ forloop.counter0 }}"  name="check_{{ forloop.counter0 }}">
                 <label class="form-check-label" for="check_{{ forloop.counter0 }}">
-                {{model.comment}}
+                    {{model.comment}}
                 </label>
-            
+
             </div>
         {% endfor %}
         <button type="submit" class="btn btn-primary">Save settings</button>
     </form>
-    
+
 {% endblock content %}

@@ -6,9 +6,9 @@
 
 {% block content %}
     {% has_perm "orga.perform_reviews" request.user request.event as can_review %}
-    
+
     {% include "pretalx_llm/llm_filter_form.html" %}
-    
+
     <div class="table-responsive-sm">
         <table class="table table-sm review-table table-hover table-flip table-sticky">
             <thead>
@@ -17,22 +17,22 @@
             </thead>
             <tbody>
                 {% for submission in submissions %}
-                <tr>
-                    <td>
-                        {% include "pretalx_llm/submission_line.html" with submission=submission can_see_all_reviews=can_see_all_reviews %}
-                    </td>
-                    <td>
-                    
-                    {% for related in submission.related %}
-                        {% include "pretalx_llm/submission_line.html" with submission=related can_see_all_reviews=can_see_all_reviews %}{% if not forloop.last %}<br/> {% endif %}
-                    {% endfor %}
-                    </td>
-                </tr>
+                    <tr>
+                        <td>
+                            {% include "pretalx_llm/submission_line.html" with submission=submission can_see_all_reviews=can_see_all_reviews %}
+                        </td>
+                        <td>
+
+                            {% for related in submission.related %}
+                                {% include "pretalx_llm/submission_line.html" with submission=related can_see_all_reviews=can_see_all_reviews %}{% if not forloop.last %}<br/> {% endif %}
+                            {% endfor %}
+                        </td>
+                    </tr>
                 {% endfor %}
 
             </tbody>
         </table>
 
     </div>
-    
+
 {% endblock content %}
