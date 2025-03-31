@@ -1,0 +1,23 @@
+{% extends "orga/includes/submission_filter_form.html" %}
+{% load i18n %}
+
+{% block extra_filter_fields %}
+
+    {{ model_form }}
+    
+    <div class="d-flex flex-column form-group w-100 mt-3">
+        <h3>Highlight the following submissions</h3>
+    </div>
+
+
+    {{ highlight_form.q.as_field_group }}
+    {% if show_submission_types and highlight_form.submission_type %}{{ highlight_form.submission_type.as_field_group }}{% endif %}
+    <div class="d-flex flex-column form-group">
+        {{ highlight_form.state.as_field_group }}
+        <div id="pending" class="ml-1 d-none">{{ highlight_form.pending_state__isnull.as_field_group }}</div>
+    </div>
+    {% if highlight_form.track %}{{ highlight_form.track.as_field_group }}{% endif %}
+    {% if highlight_form.tags %}{{ highlight_form.tags.as_field_group }}{% endif %}
+    {% if highlight_form.content_locale %}{{ highlight_form.content_locale.as_field_group }}{% endif %}
+    
+{% endblock extra_filter_fields %}

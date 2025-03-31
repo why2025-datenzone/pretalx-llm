@@ -1,0 +1,46 @@
+{% load review_score %}
+{% load i18n %}
+{% load rules %}
+
+{% has_perm "orga.view_speakers" request.user request.event as can_view_speakers %}
+
+<a href="{% if can_review %}{{ submission.orga_urls.reviews }}{% else %}{{ submission.orga_urls.base }}{% endif %}">
+    {% if can_view_speakers %}
+        {{ submission.title }}
+    {% else %}
+        {{ submission.anonymised.title|default:submission.title }}
+    {% endif %}
+</a> 
+{% if show_review_scores %}
+    {% if can_see_all_reviews %}
+        <i class="fa fa-star" style="font-family: ForkAwesome;" aria-hidden="true"></i>
+        {% review_score submission %}
+        {% if independent_categories %}(
+            {% for score in submission.independent_scores %}
+                {% if score is None %}-{% else %}{{ score }}{% endif %}{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+        ){% endif %}
+    {% endif %}
+    {% if can_review or submissions_reviewed %}
+        <i class="fa fa-star-o" style="font-family: ForkAwesome;" aria-hidden="true"></i>
+        {% review_score submission True %}
+        {% if not can_see_all_reviews and independent_categories %}(
+            {% for score in submission.independent_scores %}
+                {% if score is None %}-{% else %}{{ score }}{% endif %}{% if not forloop.last %}, {% endif %}
+            {% endfor %}
+        ){% endif %}
+    {% endif %}
+{% endif %}
+{% if show_review_numbers %}
+    <i class="fa fa-list" style="font-family: ForkAwesome;" aria-hidden="true"></i>
+    {{ submission.review_nonnull_count|default:"-" }}
+    {% if submission.review_count != submission.review_nonnull_count %}({{ submission.review_count|default:"-" }}){% endif %}
+{% endif %}
+    {% if submission.pk in submissions_reviewed %}
+        <i class="fa fa-check text-success" style="font-family: ForkAwesome;" title="{% translate "You have reviewed this proposal" %}"></i>
+    {% elif request.user in submission.speakers.all %}
+        <i class="fa fa-check text-muted" style="font-family: ForkAwesome;" title="{% translate "You cannot review this proposal" %}"></i>
+    {% endif %}
+    {% if submission.is_assigned %}
+        <i class="fa fa-star text-warning" style="font-family: ForkAwesome;" title="{% translate "You have been assigned to this proposal" %}"></i>
+    {% endif %}

@@ -1,0 +1,40 @@
+{% extends "orga/base.html" %}
+{% load i18n %}
+{% load rules %}
+{% load static %}
+{% load compress %}
+
+{% block stylesheets %}
+    <link rel="stylesheet" type="text/css" href="{% static "vendored/apexcharts/apexcharts.css" %}" />
+{% endblock stylesheets %}
+
+{% block scripts %}
+    {% compress js %}
+        <script defer src="{% static "vendored/apexcharts/apexcharts.min.js" %}"></script>
+        <script defer src="{% static "pretalx_llm/js/scatterplot.js" %}"></script>
+    {% endcompress %}
+{% endblock scripts %}
+
+
+{% block extra_title %}Pretalx LLL Graph :: {% endblock extra_title %}
+
+{% block content %}
+    {% has_perm "orga.perform_reviews" request.user request.event as can_review %}
+    
+    {% include "pretalx_llm/llm_graph_form.html" %}
+
+    <div id="stats">
+        <h2 class="d-flex w-100 justify-content-between align-items-start">
+            {% translate "Similarities Graph" %}
+        </h2>
+
+        <div id="global-data" class="d-none" data-url="{{ data_url }}"></div>
+
+        <div class="card">
+            <div class="card-header">{% translate "Plot" %}</div>
+            <div id="plot" class="card-body">Loading...</div>
+        </div>
+
+    </div>
+    
+{% endblock content %}

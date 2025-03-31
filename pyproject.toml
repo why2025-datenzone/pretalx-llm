@@ -1,0 +1,38 @@
+[project]
+name = "pretalx-llm"
+dynamic = ["version"]
+description = "Pretalx LLM integration for semantic similarity of submissions"
+readme = "README.rst"
+license = {text = "Apache Software License"}
+keywords = ["pretalx"]
+authors = [
+  {name = "Erik Tews", email = "erik@datenzone.de"},
+]
+maintainers = [
+  {name = "Erik Tews", email = "erik@datenzone.de"},
+]
+
+dependencies = ["ollama", "numpy", "python-redis-lock", "openai"]
+
+[project.urls]
+homepage = "https://github.com/eriktews/pretalx-llm"
+repository = "https://github.com/eriktews/pretalx-llm.git"
+
+[project.entry-points."pretalx.plugin"]
+pretalx_llm = "pretalx_llm:PretalxPluginMeta"
+
+[build-system]
+build-backend = "setuptools.build_meta"
+requires = ["setuptools"]
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.dynamic]
+version = {attr = "pretalx_llm.__version__"}
+
+[tool.setuptools.packages.find]
+include = ["pretalx*"]
+
+[tool.check-manifest]
+ignore = [".*"]

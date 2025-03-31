@@ -1,0 +1,11 @@
+{% extends "orga/includes/submission_filter_form.html" %}
+{% load i18n %}
+
+{# block form_attrs %} id="review-filter-form"{% endblock form_attrs #}
+
+{% block extra_filter_fields %}
+
+    {{ additional_form }}
+    {{ model_form }}
+    
+{% endblock extra_filter_fields %}

@@ -1,0 +1,18 @@
+{% extends "orga/includes/submission_filter_form.html" %}
+{% load i18n %}
+
+{# block form_attrs %} id="review-filter-form"{% endblock form_attrs #}
+
+{% block extra_filter_fields %}
+
+    {{ model_form }}
+    {{ limit_form }}
+    {{ review_status_form }}
+    <div class="d-flex flex-column form-group w-100 mt-3">
+        <h3>Describe what you are interested in:</h3>
+    </div>
+    <div class="d-flex flex-column form-group w-100">
+        {{ search_form.searchText.as_field_group }}
+    </div>
+    
+{% endblock extra_filter_fields %}

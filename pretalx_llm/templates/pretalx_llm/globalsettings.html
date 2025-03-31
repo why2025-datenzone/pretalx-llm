@@ -1,0 +1,96 @@
+{% extends "orga/base.html" %}
+{% load i18n %}
+
+{% block extra_title %}Pretalx Global LLM Settings :: {% endblock extra_title %}
+
+{% block content %}
+<fieldset>
+<legend>Models</legend>
+<div class="table-responsive-sm">
+    <table class="table table-hover table-sm table-flip table-sticky">
+        <thead>
+            <tr>
+                <th>Name</th>
+                <th class="numeric">Number of conferences</th>
+                <th>Status</th>
+                <th>Comment</th>
+                <th colspan="2">Action</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for model in models %}
+                <tr>
+                    <td>
+                        {{model.provider}}: {{model.name}}
+                    </td>
+                    <td class="numeric">{{model.count}}</td>
+                    <td>
+                        {% if not model.imported %}
+                        Available
+                        {% elif model.active %}
+                        Running
+                        {% else %}
+                        Paused
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not model.imported %}
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="text" name="comment" value="{{model.comment}}"/>
+                        {% else %}
+                        {{ model.comment }}
+                        {% endif %}
+                    </td>
+                    <td>
+                        {% if not model.imported  %}
+                                <input type="hidden" name="provider" value="{{model.provider}}"/>
+                                <input type="hidden" name="name" value="{{model.name}}"/>
+                                <button type="submit" name="action" value="import" class="btn btn-primary btn-sm rounded-circle">
+                                    <i class="fa fa-download fa-sm" aria-hidden="true"></i>
+                                </button>
+                            </form>
+                        {% else %}
+                        <form method="POST">
+                            {% csrf_token %}
+                            <input type="hidden" name="provider" value="{{model.provider}}"/>
+                            <input type="hidden" name="name" value="{{model.name}}"/>
+                            <button type="submit" name="action" value="delete" class="btn btn-primary btn-sm rounded-circle">
+                                <i class="fa fa-trash fa-sm" aria-hidden="true"></i>
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td><td>
+                        {% if model.imported  %}
+                            {% if model.active %}
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="provider" value="{{model.provider}}"/>
+                                <input type="hidden" name="name" value="{{model.name}}"/>
+                                <button type="submit" name="action" value="stop" class="btn btn-primary btn-sm rounded-circle">
+                                    <i class="fa fa-pause fa-sm" aria-hidden="true"></i>
+                                </button>
+                            </form>
+                            {% else %}
+                            <form method="POST">
+                                {% csrf_token %}
+                                <input type="hidden" name="provider" value="{{model.provider}}"/>
+                                <input type="hidden" name="name" value="{{model.name}}"/>
+                                <button type="submit" name="action" value="start" class="btn btn-primary btn-sm rounded-circle">
+                                    <i class="fa fa-play fa-sm" aria-hidden="true"></i>
+                                </button>
+                            </form>
+                            {% endif %}
+                        {% endif %}
+                        
+                    </td>
+
+                </tr>
+            {% endfor %}
+            
+        </tbody>
+    </table>
+</div>
+</fieldset>
+
+{% endblock content %}
