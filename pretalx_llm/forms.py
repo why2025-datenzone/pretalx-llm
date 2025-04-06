@@ -3,13 +3,33 @@ from typing import List
 
 from django import forms
 from django.db.models import Exists, OuterRef
-from pretalx.common.forms.renderers import InlineFormRenderer
+from pretalx.common.forms.renderers import InlineFormLabelRenderer, InlineFormRenderer
 from pretalx.submission.models.review import Review
 
 from .exceptions import LlmModelException
 from .models import LlmEventModels
 
 logger = logging.getLogger(__name__)
+
+
+class PreferencesForm(forms.Form):
+    """
+    Form to specify whether the user wants to see the review scores and/or the number of reviews.
+    """
+
+    default_renderer = InlineFormLabelRenderer
+
+    preferenceText = forms.CharField(
+        widget=forms.Textarea(attrs={"rows": "5"}),
+        required=False,
+        label="My own review preferences",
+    )
+
+    def clean_preferenceText(self):
+        data = self.cleaned_data.get("preferenceText")
+        if not data:
+            data = ""
+        return data
 
 
 class ReviewStatusForm(forms.Form):

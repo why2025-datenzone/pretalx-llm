@@ -3,6 +3,7 @@ from pretalx.event.models.event import SLUG_REGEX
 
 from .views import (
     LLmGlobalSettingsView,
+    LlmPreferences,
     LlmReviewSuggesions,
     LlmSearch,
     LlmSettingsView,
@@ -41,6 +42,11 @@ urlpatterns = [
         rf"^orga/event/(?P<event>{SLUG_REGEX})/settings/p/pretalx_llm/search",
         LlmSearch.as_view(),
         name="search",
+    ),
+    re_path(
+        rf"^orga/event/(?P<event>{SLUG_REGEX})/settings/p/pretalx_llm/preferences",
+        LlmPreferences.as_view(),
+        name="preferences",
     ),
     path(
         "orga/admin/llmsettings/",

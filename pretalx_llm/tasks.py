@@ -2,9 +2,8 @@ import logging
 
 from pretalx.celery_app import app
 
-from pretalx_llm.models import LlmEmbedding
-
 from . import cache_utils
+from .models import LlmEmbedding, LlmUserPreferenceEmbedding
 from .utils import get_provider
 
 logger = logging.getLogger(__name__)
@@ -65,6 +64,35 @@ def embed_query(query, provider, model, key=None):
         if key is not None:
             cache_utils.maybe_set(key, result, timeout=3600 * 2)
         return result
+    except Exception as err:
+        logger.error("Failed to run task {}: {}".format(id, err))
+        raise err
+
+
+@app.task(
+    name="pretalx_llm.signals.embed_preference",
+    autoretry_for=(Exception,),
+    max_retries=10,
+    retry_backoff=True,
+    retry_backoff_max=600,
+    retry_jitter=True,
+)
+def embed_preference(preference_embedding_id):
+    """
+    Embed a user preference for a given provider and model.
+    """
+    logger.debug("Starting async preference task: {}".format(preference_embedding_id))
+    try:
+        embed = LlmUserPreferenceEmbedding.objects.get(id=preference_embedding_id)
+        model_provider = get_provider()
+        embedding = model_provider.get_query_embedding(
+            embed.event_model.name.provider,
+            embed.event_model.name.name,
+            embed.preference,
+        )
+        embed.embedding = embedding
+        embed.save(update_fields=["embedding"])
+
     except Exception as err:
         logger.error("Failed to run task {}: {}".format(id, err))
         raise err

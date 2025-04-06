@@ -14,6 +14,7 @@ from django.db.models import (
     Subquery,
 )
 from django.db.models.functions import Coalesce
+from django.db.utils import IntegrityError
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import render
 from django.template import loader
@@ -34,20 +35,118 @@ from .forms import (
     ComparisonSettingsForm,
     LimitForm,
     ModelForm,
+    PreferencesForm,
     ReviewStatusForm,
     SearchForm,
     SortForm,
 )
-from .models import LlmEmbedding, LlmEventModels, LlmModels
+from .models import (
+    LlmEmbedding,
+    LlmEventModels,
+    LlmModels,
+    LlmUserPreference,
+    LlmUserPreferenceEmbedding,
+)
 from .redislock import PretalxOptionalLock
 from .software import SoftwareFilterer
-from .tasks import embed_query
+from .tasks import embed_preference, embed_query
 from .utils import get_provider
 
 # from silk.profiling.profiler import silk_profile
 
 
 logger = logging.getLogger(__name__)
+
+
+class LlmBase(PermissionRequired):
+
+    permission_required = "orga.view_orga_area"
+
+    @cached_property
+    def models(self):
+        return list(
+            LlmEventModels.objects.filter(
+                event=self.request.event, name__active=True
+            ).select_related("name")
+        )
+
+    def get_object(self):
+        return self.request.event
+
+
+class LlmPreferences(TemplateView, LlmBase):
+    """
+    View for the preferences of a user for an event.
+    """
+
+    template_name = "pretalx_llm/preferences.html"
+
+    @context
+    @cached_property
+    def preferences_form(self):
+        if self.request.method == "POST":
+            return PreferencesForm(
+                data=self.request.POST,
+            )
+        else:
+            current_preference = LlmUserPreference.objects.filter(
+                user=self.request.user,
+                event=self.request.event,
+            ).first()
+            text = getattr(current_preference, "preference", "")
+            return PreferencesForm(initial={"preferenceText": text})
+
+    def post(self, request, event):
+        preferences_form = self.preferences_form
+        if not preferences_form.is_valid():
+            raise SuspiciousOperation()
+        preference_text = preferences_form.cleaned_data.get("preferenceText")
+        if preference_text == "":
+            LlmUserPreference.objects.filter(
+                user=self.request.user,
+                event=self.request.event,
+            ).delete()
+        else:
+            (pref, created) = LlmUserPreference.objects.update_or_create(
+                user=self.request.user,
+                event=self.request.event,
+                defaults={"preference": preference_text},
+            )
+            logger.debug("Created is {}".format(created))
+            logger.debug("Models are {}".format(self.models))
+            for model in self.models:
+                logger.debug("Current model is {}".format(model))
+                try:
+                    embed = LlmUserPreferenceEmbedding.objects.create(
+                        preference=preference_text,
+                        event_model=model,
+                        user_preference=pref,
+                    )
+                    embed.save()
+                    res = embed_preference.apply_async((embed.id,), ignore_result=True)
+                    embed.task_id = res.task_id
+                    embed.save(update_fields=["task_id"])
+                except IntegrityError:
+                    # That's fine, then there is already such an embedding
+                    pass
+
+        return self.render_to_response(self.get_context_data(event=self.request.event))
+
+    def get_context_data(self, event, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        query = (
+            LlmUserPreference.objects.filter(
+                event=self.request.event,
+            )
+            .exclude(
+                user=self.request.user,
+            )
+            .select_related("user")
+        )
+
+        context["other_preferences"] = [x for x in query]
+        return context
 
 
 class LlmTemplateView(TemplateView):
@@ -161,7 +260,7 @@ class ReviewFilterHelper(ReviewerSubmissionFilter):
         self.request = request
 
 
-class LlmSimilarities(PermissionRequired):
+class LlmSimilarities(LlmBase):
     """
     Base class for almost every regular view in Pretalx LLM.
     """
@@ -170,9 +269,6 @@ class LlmSimilarities(PermissionRequired):
     permission_required = "orga.view_orga_area"
 
     usable_states = None
-
-    def get_object(self):
-        return self.request.event
 
     @context
     @cached_property
@@ -363,14 +459,6 @@ class LlmSimilarities(PermissionRequired):
                 ),
             )
         return queryset
-
-    @cached_property
-    def models(self):
-        return list(
-            LlmEventModels.objects.filter(
-                event=self.request.event, name__active=True
-            ).select_related("name")
-        )
 
     @context
     @cached_property

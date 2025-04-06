@@ -1,5 +1,6 @@
 from django.db import models
 from pretalx.event.models.event import Event
+from pretalx.person.models.user import User
 from pretalx.submission.models import Submission
 
 
@@ -69,17 +70,48 @@ class LlmEmbedding(models.Model):
     task_id = models.CharField(max_length=50)
 
 
-# class LlmPreferenceEmbedding(models.Model):
-#     class Meta:
-#         constraints = [
-#             models.UniqueConstraint(
-#                 fields=["event_model", "user", "text"],
-#                 name="unique_preference",
-#             )
-#         ]
+class LlmUserPreference(models.Model):
+    """
+    What a user would like to review for a specific event.
 
-#     user = models.ForeignKey(User, on_delete=models.CASCADE)
-#     event_model = models.ForeignKey(LlmEventModels, on_delete=models.CASCADE)
-#     embedding = models.JSONField(null=True)
-#     text = models.TextField()
-#     task_id = models.CharField(max_length=50,blank=True)
+    Every user can indicate a preference of what they would like to review for each event. This can then be used to find the best reviewers for a submission.
+    """
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event", "user"], name="unique_event_user_model"
+            )
+        ]
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE)
+    event = models.ForeignKey(Event, on_delete=models.CASCADE)
+
+    preference = models.TextField(blank=False, null=False)
+
+
+class LlmUserPreferenceEmbedding(models.Model):
+    """
+    An embedding vector for a user preference.
+
+    Since generating these vectors may take a while, multiple vectors are stored for a user preference.
+
+    As long as an embedding is available that matches the current preference of a user for the given event, this embedding should be used. Should the preference have changed, then it could be wise to use the most recent embedding vector since there is a good chance that the update was a minor one and the old embedding vector is still useable.
+
+    When a new item is created, the task_id and embedding remain NULL. When the task to generate the embedding is created, the task_id here is updated and once the task has been executed, it will update the embedding vector here.
+    """
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["event_model", "user_preference", "preference"],
+                name="unique_event_user_model_embedding",
+            )
+        ]
+
+    event_model = models.ForeignKey(LlmEventModels, on_delete=models.CASCADE)
+    created = models.DateTimeField(auto_now_add=True, blank=True, null=True)
+    user_preference = models.ForeignKey(LlmUserPreference, on_delete=models.CASCADE)
+    preference = models.TextField(null=False, blank=False)
+    embedding = models.JSONField(null=True)
+    task_id = models.CharField(max_length=50)

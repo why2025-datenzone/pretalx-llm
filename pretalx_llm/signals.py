@@ -1,6 +1,7 @@
 import logging
 
 from django.db.models import F, FilteredRelation, Q
+from django.db.utils import IntegrityError
 from django.dispatch import receiver
 from django.urls import resolve, reverse
 from django.utils.translation import gettext_lazy as _
@@ -9,9 +10,8 @@ from pretalx.common.signals import minimum_interval, periodic_task
 from pretalx.orga.signals import nav_event, nav_event_settings, nav_global
 from pretalx.submission.models import Submission
 
-from pretalx_llm.models import LlmEmbedding
-
-from .tasks import embed_submission
+from .models import LlmEmbedding, LlmUserPreference, LlmUserPreferenceEmbedding
+from .tasks import embed_preference, embed_submission
 
 logger = logging.getLogger(__name__)
 
@@ -101,6 +101,17 @@ def pretalx_llm_settings(sender, request, **kwargs):
                         and (url.namespaces == ["plugins", "pretalx_llm"])
                     ),
                 },
+                {
+                    "label": "Preferences",
+                    "url": reverse(
+                        "plugins:pretalx_llm:preferences",
+                        kwargs={"event": request.event.slug},
+                    ),
+                    "active": (
+                        (url.url_name == "preferences")
+                        and (url.namespaces == ["plugins", "pretalx_llm"])
+                    ),
+                },
             ],
         }
     ]
@@ -124,6 +135,49 @@ def pretalx_llm_settings_settings(sender, request, **kwargs):
             "active": request.resolver_match.url_name == "plugins:pretalx_llm:settings",
         }
     ]
+
+
+@receiver(signal=periodic_task)
+@minimum_interval(minutes_after_success=1, minutes_after_error=1)
+def run_llm_preference_reindex(sender, **kwargs):
+    try:
+        with scope(event=None):
+            query = LlmUserPreference.objects.annotate(
+                modelname=F("event__llmeventmodels__name"),
+                eventmodelid=F("event__llmeventmodels__id"),
+                modelstatus=F("event__llmeventmodels__name__active"),
+                embedding=FilteredRelation(
+                    "llmuserpreferenceembedding",
+                    condition=(
+                        Q(
+                            llmuserpreferenceembedding__event_model=F(
+                                "event__llmeventmodels"
+                            )
+                        )
+                        & Q(llmuserpreferenceembedding__preference=F("preference"))
+                    ),
+                ),
+                embid=F("embedding__id"),
+            ).filter(modelstatus=True, embid__isnull=True, modelname__isnull=False)
+            for missing_preference_embedding in list(query):
+                try:
+                    embed = LlmUserPreferenceEmbedding.objects.create(
+                        preference=missing_preference_embedding.preference,
+                        event_model_id=missing_preference_embedding.eventmodelid,
+                        user_preference=missing_preference_embedding,
+                    )
+                    embed.save()
+                    res = embed_preference.apply_async((embed.id,), ignore_result=True)
+                    embed.task_id = res.task_id
+                    embed.save(update_fields=["task_id"])
+                except IntegrityError:
+                    # That's fine, then there is already such an embedding
+                    pass
+                except Exception as err:
+                    logger.info("Failed to embed user preference: {}".format(err))
+
+    except Exception as e:
+        logger.info("Exception: {}".format(e))
 
 
 @receiver(signal=periodic_task)
