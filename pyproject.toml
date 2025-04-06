@@ -12,7 +12,7 @@ maintainers = [
   {name = "Erik Tews", email = "erik@datenzone.de"},
 ]
 
-dependencies = ["ollama", "numpy", "python-redis-lock", "openai"]
+dependencies = ["ollama", "numpy", "python-redis-lock", "openai", "umap"]
 
 [project.urls]
 homepage = "https://github.com/eriktews/pretalx-llm"
