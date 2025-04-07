@@ -1,4 +1,3 @@
-import json
 import logging
 
 from pretalx.celery_app import app
@@ -37,7 +36,7 @@ def embed_submission(id):
             embed.event_model.name.provider, embed.event_model.name.name, to_input
         )
         logger.debug("Embedding result for {} is: {}".format(id, result))
-        embed.embedding = json.dumps(result)
+        embed.embedding = result
         embed.save(update_fields=["embedding"])
         logger.info("Success for task {}".format(id))
     except Exception as err:

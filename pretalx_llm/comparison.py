@@ -30,8 +30,8 @@ class SubmissionComparison:
         hasher = hashlib.sha256()
         for submission in submissions:
             j = submission.embeddings_data
-            hasher.update(j.encode("utf-8"))
-            t = np.array(json.loads(j))
+            hasher.update(json.dumps(j).encode("utf-8"))
+            t = np.array(j)
 
             # Normalize the embedding vectors
             submission.nbvec = t / np.linalg.norm(t)
@@ -131,7 +131,7 @@ class SubmissionComparison:
         Get a ranked list of the submissions, based on the similarity with the submissions already reviewed.
         """
         for r in reviewed:
-            t = np.array(json.loads(r.embeddings_data))
+            t = np.array(r.embeddings_data)
             r.nbvec = t / np.linalg.norm(t)
         distances = self._compute_distances(self.submissions, reviewed)
         result = []
