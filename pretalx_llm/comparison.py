@@ -75,6 +75,30 @@ class SubmissionComparison:
             best_idx = heapq.nlargest(n, other_idx, key=lambda x, d=row: d[x])
             left[i].related = [submissions[x] for x in best_idx]
 
+    def rank_reviewers(self, reviewers, n):
+        """_Find the best reviewers for the given submissions._
+
+        The result will be stored in the _suggested_reviewers_ attribute of the submissions.
+
+        Args:
+            reviewers (Anything with an embedded_data attribute): _All possible reviewers_
+            n (_int_): _Maximum number of reviewers to suggest_
+        """
+        # Turn embedding vectors into normalized arrays
+        for reviewer in reviewers:
+            j = reviewer.embeddings_data
+            t = np.array(j)
+            # Normalize the embedding vectors
+            reviewer.nbvec = t / np.linalg.norm(t)
+
+        # This is almost the same code as in _compare_submission_set, but we compare every submission with all reviewers.
+        distances = self._compute_distances(self.submissions, reviewers)
+        for i in range(len(self.submissions)):
+            row = distances[i]
+            indexes = range(len(reviewers))
+            best_idx = heapq.nlargest(n, indexes, key=lambda x, d=row: d[x])
+            self.submissions[i].suggested_reviewers = [reviewers[x] for x in best_idx]
+
     # @silk_profile(name="Umap")
     def add_2d_vectors(self, dimensions=2):
         """_Reduce the high dimensional embedding vectors to a lower dimension, such as 2._

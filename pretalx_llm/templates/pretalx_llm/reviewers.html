@@ -1,0 +1,42 @@
+{% extends "orga/base.html" %}
+{% load i18n %}
+{% load rules %}
+
+{% block extra_title %}Pretalx LLM Reviewer suggestions :: {% endblock extra_title %}
+
+{% block content %}
+    {% has_perm "orga.perform_reviews" request.user request.event as can_review %}
+
+    {% include "pretalx_llm/llm_reviewers_form.html" %}
+
+    <div class="table-responsive-sm">
+        <table class="table table-sm review-table table-hover table-flip table-sticky">
+            <thead>
+                <th>Title</th>
+                <th>Suggested reviewers</th>
+            </thead>
+            <tbody>
+                {% for submission in submissions %}
+                    <tr>
+                        <td>
+                            {% include "pretalx_llm/submission_line.html" with submission=submission can_see_all_reviews=can_see_all_reviews %}
+                        </td>
+                        <td>
+                            {% for reviewer in submission.suggested_reviewers %}
+                                {{ reviewer.user.name }}
+                                {% if reviewer.user in submission.reviewers %}
+                                    <i class="fa fa-check text-success" style="font-family: ForkAwesome;" title="{% translate "He has reviewed this proposal" %}"></i>
+                                {% endif %}
+                                {% if not forloop.last %}<br/> {% endif %}
+                            {% endfor %}
+
+                        </td>
+                    </tr>
+                {% endfor %}
+
+            </tbody>
+        </table>
+
+    </div>
+
+{% endblock content %}

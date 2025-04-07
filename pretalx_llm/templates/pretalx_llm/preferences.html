@@ -11,7 +11,7 @@
         {{ preferences_form }}
         <button type="submit" class="btn-success float-right">Save</button>
     </form>
-    
+
     <h2>Here are the preferences of other users:</h2>
     {% for preference in other_preferences %}
         <p><b>{{preference.user.name}} ({{preference.user.email}}):</b> {{preference.preference | linebreaksbr}}</p>

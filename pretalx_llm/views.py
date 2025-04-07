@@ -36,6 +36,7 @@ from .forms import (
     LimitForm,
     ModelForm,
     PreferencesForm,
+    ReviewersSearchForm,
     ReviewStatusForm,
     SearchForm,
     SortForm,
@@ -260,7 +261,7 @@ class ReviewFilterHelper(ReviewerSubmissionFilter):
         self.request = request
 
 
-class LlmSimilarities(LlmBase):
+class LlmSimilaritiesBase(LlmBase):
     """
     Base class for almost every regular view in Pretalx LLM.
     """
@@ -303,6 +304,15 @@ class LlmSimilarities(LlmBase):
     def filter_form(self):
         return self.get_filter_form()
 
+    @cached_property
+    def aggregate_method(self):
+        return self.request.event.review_settings["aggregate_method"]
+
+    @context
+    @cached_property
+    def show_submission_types(self):
+        return self.request.event.submission_types.all().count() > 1
+
     @context
     @cached_property
     def limit_form(self):
@@ -326,9 +336,16 @@ class LlmSimilarities(LlmBase):
     def limit_tracks(self):
         return self.review_filter_helper.limit_tracks
 
+    @context
     @cached_property
-    def aggregate_method(self):
-        return self.request.event.review_settings["aggregate_method"]
+    def model_form(self):
+        return ModelForm(
+            data=self.request.GET,
+            models=self.models,
+            # Check whether there are also other conditions under which
+            # a user can see other reviews, such as the review phase being over
+            can_see_other_reviews=self.can_see_all_reviews,
+        )
 
     def get_default_filters(self, *args, **kwargs):
         default_filters = {"code__icontains", "title__icontains"}
@@ -351,11 +368,6 @@ class LlmSimilarities(LlmBase):
         if rfh.user_permissions == {"is_reviewer"}:
             queryset = rfh.limit_for_reviewers(queryset)
         return queryset
-
-    @context
-    @cached_property
-    def show_submission_types(self):
-        return self.request.event.submission_types.all().count() > 1
 
     def compute_review(self, submission):
         if self.can_see_all_reviews:
@@ -460,16 +472,8 @@ class LlmSimilarities(LlmBase):
             )
         return queryset
 
-    @context
-    @cached_property
-    def model_form(self):
-        return ModelForm(
-            data=self.request.GET,
-            models=self.models,
-            # Check whether there are also other conditions under which
-            # a user can see other reviews, such as the review phase being over
-            can_see_other_reviews=self.can_see_all_reviews,
-        )
+
+class LlmSimilarities(LlmSimilaritiesBase):
 
     @context
     @cached_property
@@ -477,6 +481,130 @@ class LlmSimilarities(LlmBase):
         return ComparisonSettingsForm(
             data=self.request.GET,
         )
+
+
+class LlmReviewerSuggestionsView(LlmSimilaritiesBase, TemplateView):
+    """
+    _Suggest reviewers for submissions based on the preferences of the reviewers._
+    """
+
+    template_name = "pretalx_llm/reviewers.html"
+
+    @context
+    @cached_property
+    def reviewers_search_form(self):
+        return ReviewersSearchForm(
+            data=self.request.GET,
+        )
+
+    def get_reviewer_queryset(self):
+        return LlmUserPreference.objects.filter(
+            event=self.request.event,
+        ).select_related("user")
+
+    def annotate_reviewer_embeddings(self, queryset, model):
+        # Subquery to get the embeddings with matching title and description
+        matching_embeddings = LlmUserPreferenceEmbedding.objects.filter(
+            user_preference=OuterRef("pk"),
+            preference=OuterRef("preference"),
+            event_model=model,
+        ).values("embedding")[:1]
+
+        # Subquery that gets the most recent one that is outdated
+        recent_embeddings = (
+            LlmUserPreferenceEmbedding.objects.filter(
+                user_preference=OuterRef("pk"),
+                event_model=model,
+            )
+            .order_by("-created")
+            .values("embedding")[:1]
+        )
+
+        return queryset.annotate(
+            # The embeddings
+            embeddings_data=Subquery(
+                matching_embeddings, output_field=JSONField()
+            )  # Try to match by the exact preference
+        ).annotate(
+            embeddings_data=Coalesce(
+                "embeddings_data", Subquery(recent_embeddings, output_field=JSONField())
+            )  # Fallback to recent if no match
+        )
+
+    def annotate_reviewers(self, queryset):
+        queryset = queryset.prefetch_related(
+            "reviews",
+            "reviews__user",
+        )
+        return queryset
+
+    def get_context_data(self, event, **kwargs):
+        context = super().get_context_data(**kwargs)
+
+        filter_form = self.filter_form
+        model_form = self.model_form
+        limit_form = self.limit_form
+        review_status_form = self.review_status_form
+        sort_form = self.sort_form
+        reviewers_search_form = self.reviewers_search_form
+
+        if not (
+            filter_form.is_valid()
+            and model_form.is_valid()
+            and limit_form.is_valid()
+            and review_status_form.is_valid()
+            and sort_form.is_valid()
+            and reviewers_search_form.is_valid()
+        ):
+            raise SuspiciousOperation()
+
+        model = model_form.getModel()
+
+        queryset = self.get_base_queryset()
+
+        # We need the reviewers so that we can check whether a suggested reviewer already reviewed this particular submission
+        queryset = self.annotate_reviewers(queryset)
+
+        queryset = self.annotate_embeddings(queryset, model)
+
+        queryset = self.add_reviews(model_form, queryset)
+        queryset = self.review_status_form.annotate(queryset)
+
+        queryset = review_status_form.filter_queryset(queryset)
+        submission_objects = self.filter_form.filter_queryset(queryset)
+
+        submission_objects = sort_form.order_queryset(submission_objects)
+        submission_list = list(
+            filter(
+                lambda x: x.embeddings_data is not None, submission_objects.distinct()
+            )
+        )[: limit_form.get_limit()]
+
+        if model_form.show_review_scores():
+            for submission in submission_list:
+                self.compute_review(submission)
+
+        # Add the reviewers so that the template can say whether this submission was already reviewed by a suggested reviewer
+        for submission in submission_list:
+            submission.reviewers = [x.user for x in submission.reviews.all()]
+
+        # Find the reviewers now
+        reviewer_queryset = self.get_reviewer_queryset()
+        reviewer_queryset = self.annotate_reviewer_embeddings(reviewer_queryset, model)
+        reviewers = list(
+            filter(
+                lambda x: x.embeddings_data is not None, reviewer_queryset.distinct()
+            )
+        )
+
+        sc = SubmissionComparison(submission_list)
+        sc.rank_reviewers(reviewers, reviewers_search_form.getN())
+
+        # Return the result
+        context["submissions"] = submission_list
+        context["show_review_numbers"] = model_form.show_review_numbers()
+        context["show_review_scores"] = model_form.show_review_scores()
+        return context
 
 
 class LlmSimilaritiesGraphGeneral(LlmSimilarities):

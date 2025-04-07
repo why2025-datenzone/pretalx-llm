@@ -230,6 +230,44 @@ class ModelForm(forms.Form):
         return self.models[int(self.cleaned_data["model"])]
 
 
+class ReviewersSearchForm(forms.Form):
+    """
+    _Limit the number of reviewers to display when searching for reviewers._
+    """
+
+    numberOfReviewers = forms.ChoiceField(
+        label="Number of reviewers to show",
+        choices=[(str(x), "Suggest {} reviewers".format(x)) for x in range(1, 11)],
+        initial="5",
+        required=False,
+    )
+
+    default_renderer = InlineFormRenderer
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        if "data" in kwargs and isinstance(kwargs["data"], dict):
+            data = kwargs["data"]
+
+            for field_name, field in self.fields.items():
+                if field_name not in data or data[field_name] == "":
+                    logger.info("Have to fix {}".format(field_name))
+                    self.initial[field_name] = field.initial
+                    self.data = self.data.copy()
+                    self.data[field_name] = field.initial
+
+    def clean_numberOfReviewers(self):
+        data = self.cleaned_data.get("numberOfReviewers")
+        logger.info("Data for the choice is: {}".format(data))
+        if not data:
+            data = "5"
+        return data
+
+    def getN(self):
+        return int(self.cleaned_data.get("numberOfReviewers"))
+
+
 class ComparisonSettingsForm(forms.Form):
     """
     Spedify with which submissions submissions should be compared with.

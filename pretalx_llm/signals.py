@@ -112,6 +112,17 @@ def pretalx_llm_settings(sender, request, **kwargs):
                         and (url.namespaces == ["plugins", "pretalx_llm"])
                     ),
                 },
+                {
+                    "label": "Reviewers",
+                    "url": reverse(
+                        "plugins:pretalx_llm:reviewers",
+                        kwargs={"event": request.event.slug},
+                    ),
+                    "active": (
+                        (url.url_name == "reviewers")
+                        and (url.namespaces == ["plugins", "pretalx_llm"])
+                    ),
+                },
             ],
         }
     ]
