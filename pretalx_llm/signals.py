@@ -1,20 +1,12 @@
-from datetime import timedelta
 import itertools
 import logging
+from datetime import timedelta
 
 import celery
 from celery.result import AsyncResult
-
-from django.db.models import (
-    Exists,
-    F,
-    FilteredRelation,
-    OuterRef,
-    Q,
-)
-
-
-from django.db.models import F, FilteredRelation, Q
+from django.db import transaction
+from django.db.models import Exists, F, FilteredRelation, OuterRef, Q
+from django.db.models.signals import post_save
 from django.db.utils import IntegrityError
 from django.dispatch import receiver
 from django.urls import resolve, reverse
@@ -26,8 +18,12 @@ from pretalx.common.signals import minimum_interval, periodic_task
 from pretalx.orga.signals import nav_event, nav_event_settings, nav_global
 from pretalx.submission.models import Submission
 
-
-from .models import LlmEmbedding, LlmUserPreference, LlmUserPreferenceEmbedding
+from .models import (
+    LlmEmbedding,
+    LlmEventModels,
+    LlmUserPreference,
+    LlmUserPreferenceEmbedding,
+)
 from .tasks import embed_preference, embed_submission
 
 logger = logging.getLogger(__name__)
@@ -335,7 +331,7 @@ def run_llm_reindex(sender, **kwargs):
     """
     In a nutshell, this method tries to find all submissions that don't have a matching LlmEmbedding yet for every active event model. It will then create the missing LlmEmbeddings and start a celery task that will generate the embedding vector.
     """
-    logger.info("running indexing")
+    logger.debug("running indexing")
     try:
         with scope(event=None):
             query = Submission.objects.annotate(
@@ -358,23 +354,49 @@ def run_llm_reindex(sender, **kwargs):
                 ),
                 embid=F("embedding__id"),
             ).filter(modelstatus=True, embid__isnull=True, modelname__isnull=False)
-        logger.info("Query to get all missing embeddings: {}".format(query.query))
+        logger.debug("Query to get all missing embeddings: {}".format(query.query))
+        for missing_embedding in list(query):
+            embed_single_submission(missing_embedding, missing_embedding.eventmodelid)
     except Exception as e:
-        logger.info("Exception: {}".format(e))
-    for missing_embedding in list(query):
+        logger.warning("Exception: {}".format(e))
+
+
+def embed_single_submission(submission: Submission, model_id=None):
+    """
+    _Generate embeddings for a single submission._
+
+    When a model id is given, it will only generate embeddings for this particular model. Otherwise, embeddings for all active models will be generated.
+
+    Args:
+        submission (Submission): _The submission to create embeddings for._
+        model_id (_int_, optional): _An optional id of an event model_. Defaults to None.
+    """
+    if model_id is None:
+        model_ids = [
+            x.id
+            for x in LlmEventModels.objects.filter(
+                event=submission.event, name__active=True
+            )
+        ]
+    else:
+        model_ids = [model_id]
+    for current_model_id in model_ids:
         try:
             # Create the LlmEmbedding without task_id and embedding vector
             embed = LlmEmbedding.objects.create(
-                submission=missing_embedding,
-                title=missing_embedding.title,
-                description=missing_embedding.description,
-                event_model_id=missing_embedding.eventmodelid,
+                submission=submission,
+                title=submission.title,
+                description=submission.description,
+                event_model_id=current_model_id,
             )
             embed.save()
+        except IntegrityError:
+            # That's fine, there is already such an embedding
+            continue
         except Exception as e:
             logger.warning(
                 "Failed to create embedding for title: {} description: {}: {}".format(
-                    missing_embedding.title, missing_embedding.description, e
+                    submission.title, submission.description, e
                 )
             )
             continue
@@ -383,7 +405,17 @@ def run_llm_reindex(sender, **kwargs):
             res = embed_submission.apply_async((embed.id,), ignore_result=True)
             embed.task_id = res.task_id
             embed.save(update_fields=["task_id"])
-            # The celery task will then update the LlmEmbedding with the embeddings vector.
-        except Exception as err:
-            logger.warning("Exception: {}".format(err))
-            raise err
+        except Exception as e:
+            logger.warning("Could not start task for submission save: {}".format(e))
+
+
+@receiver(post_save, sender=Submission)
+def update_submission_index(instance, **kwargs):
+    """_Will be called when a Submission is saved._
+
+    It registers an on_commit hook so that embeddings will be generated once the submission is committed to the database.
+
+    Args:
+        instance (_Submission_): _The submission that was saved._
+    """
+    transaction.on_commit(lambda: embed_single_submission(instance))
