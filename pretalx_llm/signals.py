@@ -1,14 +1,31 @@
+from datetime import timedelta
+import itertools
 import logging
+
+import celery
+from celery.result import AsyncResult
+
+from django.db.models import (
+    Exists,
+    F,
+    FilteredRelation,
+    OuterRef,
+    Q,
+)
+
 
 from django.db.models import F, FilteredRelation, Q
 from django.db.utils import IntegrityError
 from django.dispatch import receiver
 from django.urls import resolve, reverse
+from django.utils import timezone
 from django.utils.translation import gettext_lazy as _
 from django_scopes import scope
+from pretalx.celery_app import app
 from pretalx.common.signals import minimum_interval, periodic_task
 from pretalx.orga.signals import nav_event, nav_event_settings, nav_global
 from pretalx.submission.models import Submission
+
 
 from .models import LlmEmbedding, LlmUserPreference, LlmUserPreferenceEmbedding
 from .tasks import embed_preference, embed_submission
@@ -149,8 +166,129 @@ def pretalx_llm_settings_settings(sender, request, **kwargs):
 
 
 @receiver(signal=periodic_task)
+@minimum_interval(minutes_after_success=60, minutes_after_error=60)
+def remove_failed_tasks(sender, **kwargs):
+    """
+    _Delete embeddings that have a task id but the corresponding task failed_
+
+    This is a bit more expensive since we need to query Celery for every task that is currently in the queue.
+    """
+    try:
+        logger.debug("Starting to check for failed tasks")
+        one_hour_ago = timezone.now() - timedelta(hours=1)
+
+        # Now lets get those that have a task id but the embedding isn't there yet and delete the failed ones
+        user_embeddings = LlmUserPreferenceEmbedding.objects.filter(
+            task_id__isnull=False,
+            created__lt=one_hour_ago,
+            embedding__isnull=True,
+        )
+
+        embeddings = LlmEmbedding.objects.filter(
+            task_id__isnull=False,
+            created__lt=one_hour_ago,
+            embedding__isnull=True,
+        )
+
+        for embedding in itertools.chain(user_embeddings, embeddings):
+            result = AsyncResult(embedding.task_id, app=app)
+            if result.state in [celery.states.REVOKED, celery.states.FAILURE]:
+                logger.warning("A task with id {} failed!".format(embedding.task_id))
+                embedding.delete()
+
+        logging.debug("Finished deleting failed tasks")
+    except Exception as e:
+        logger.error("Failed to check for failed tasks: {}".format(e))
+        raise e
+
+
+@receiver(signal=periodic_task)
+@minimum_interval(minutes_after_success=10, minutes_after_error=10)
+def remove_embeddings(sender, **kwargs):
+    """
+    _Delete embeddings that have either no task id and were created more than an hour ago or those that are outdated._
+    """
+
+    try:
+        logging.debug("Cleaning up embeddings")
+
+        # Get embeddings without task ids that were created more an an hour ago and delete them
+        one_hour_ago = timezone.now() - timedelta(hours=1)
+
+        user_deleted, _ = LlmUserPreferenceEmbedding.objects.filter(
+            task_id__isnull=True,
+            created__lt=one_hour_ago,
+        ).delete()
+
+        embedding_deleted, _ = LlmEmbedding.objects.filter(
+            task_id__isnull=True,
+            created__lt=one_hour_ago,
+        ).delete()
+
+        if (user_deleted + embedding_deleted) > 0:
+            # In general, tasks should not fail, notify the user
+            logger.warning(
+                "Deleted {} user preference embeddings and {} submission embeddings without a task id".format(
+                    user_deleted, embedding_deleted
+                )
+            )
+        else:
+            logger.debug("There were no embeddings without a task id that were deleted")
+
+        # Now get those that have a more recent embedding and they are undated (different preference)
+        newer_user_embedding_exists = LlmUserPreferenceEmbedding.objects.filter(
+            user_preference=OuterRef("user_preference"),
+            event_model=OuterRef("event_model"),
+            embedding__isnull=False,
+            created__gt=OuterRef("created"),
+        )
+
+        outdated_user_embeddings = LlmUserPreferenceEmbedding.objects.filter(
+            Exists(newer_user_embedding_exists),
+            embedding__isnull=False,
+        ).exclude(preference=F("user_preference__preference"))
+
+        logger.debug(
+            "Query for outdated ones is: {}".format(outdated_user_embeddings.query)
+        )
+        outdated_user_embeddings.delete()
+
+        newer_embedding_exists = LlmEmbedding.objects.filter(
+            event_model=OuterRef("event_model"),
+            submission=OuterRef("submission"),
+            embedding__isnull=False,
+            created__gt=OuterRef("created"),
+        )
+
+        outdated_embeddings = LlmEmbedding.objects.filter(
+            Exists(newer_embedding_exists),
+            embedding__isnull=False,
+        ).exclude(
+            Q(title=F("submission__title"))
+            & Q(
+                Q(description=F("submission__description"))
+                | (
+                    Q(submission__description__isnull=True)
+                    & Q(description__isnull=True)
+                )
+            )
+        )
+
+        logger.debug(
+            "Query for SECOND outdated ones is: {}".format(outdated_embeddings.query)
+        )
+        outdated_embeddings.delete()
+
+    except Exception as e:
+        logger.warning("Exception while trying to cleanup embeddings: {}".format(e))
+
+
+@receiver(signal=periodic_task)
 @minimum_interval(minutes_after_success=1, minutes_after_error=1)
 def run_llm_preference_reindex(sender, **kwargs):
+    """
+    _Create embedding vectors for all user preferences that are currently missing or outdated._
+    """
     try:
         with scope(event=None):
             query = LlmUserPreference.objects.annotate(
@@ -185,10 +323,10 @@ def run_llm_preference_reindex(sender, **kwargs):
                     # That's fine, then there is already such an embedding
                     pass
                 except Exception as err:
-                    logger.info("Failed to embed user preference: {}".format(err))
+                    logger.warning("Failed to embed user preference: {}".format(err))
 
     except Exception as e:
-        logger.info("Exception: {}".format(e))
+        logger.warning("Exception: {}".format(e))
 
 
 @receiver(signal=periodic_task)
