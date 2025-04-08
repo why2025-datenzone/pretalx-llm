@@ -17,6 +17,8 @@ In genreal, the plugin offers the following features:
 
 4. Search for submissions based on a textual description of interesting topics. For example a user can search for **enterprise information security** and the plugin will show submissions that match the topic, even though when the submission doesn't have any of the words in the title or description.
 
+4. Each reviewer can set some review preferences (a short text that describes what kind of submissions they are interested in, such as **enterprise information security**) and based on those preferences, matching reviewers are then suggested for each submission.
+
 Development setup
 -----------------
 
