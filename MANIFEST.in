@@ -4,3 +4,4 @@ exclude pretalx_llm/locale/django.pot
 recursive-include pretalx_llm/locale *
 recursive-include pretalx_llm *.py
 include Makefile
+include CHANGELOG.md
