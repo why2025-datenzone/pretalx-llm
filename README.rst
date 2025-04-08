@@ -170,11 +170,9 @@ Improvements
 
 There are a few ways how Pretalx LLM could be improved, but that depends on Pretalx upstream:
 
-1. **Get notified when an event is updated.** Right now there is no way to be notified when an event is updated. There is only support to be notified when the status of submission (for example from submitted to accepted) is updated, but updates of the title or description are interesting for Pretalx LLM. Once this is supported, submissions could be re-indexed immediately. Right now there is a background indexing job that regularly checks the database for submissions that were updated since they were last indexed.
+1. **Support for priorities in Celery.** Right now, Pretalx doesn't support job priorities for Celery with Redis. There are some tasks that have low priority, such as re-indexing a submission, and there are some jobs that have a high priority, such as generating the embedding vector for a query. Right now, indexing of submissions could temporarily render the semantic search feature unavailable.
 
-2. **Support for priorities in Celery.** Right now, Pretalx doesn't support job priorities for Celery with Redis. There are some tasks that have low priority, such as re-indexing a submission, and there are some jobs that have a high priority, such as generating the embedding vector for a query. Right now, indexing of submissions could temporarily render the semantic search feature unavailable.
-
-3. **Vector searches in the database.** Right now, there are extensions for Sqlite and Postgres that support vector searches, such as finding vectors with a low distance to a given target vector. Having support for that could make Pretalx LLM faster. In the current implementation, all the relevant embedding vectors are loaded in the application from the database and then compared and ranked there. That works fine, but when this could be done right in the database then this could potentially be faster and it could reduce the network traffic from the database to the application and it could lower the memory usage of the application itself.
+2. **Vector searches in the database.** Right now, there are extensions for Sqlite and Postgres that support vector searches, such as finding vectors with a low distance to a given target vector. Having support for that could make Pretalx LLM faster. In the current implementation, all the relevant embedding vectors are loaded in the application from the database and then compared and ranked there. That works fine, but when this could be done right in the database then this could potentially be faster and it could reduce the network traffic from the database to the application and it could lower the memory usage of the application itself.
 
 License
 -------
