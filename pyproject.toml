@@ -15,8 +15,8 @@ maintainers = [
 dependencies = ["ollama", "numpy", "python-redis-lock", "openai", "umap-learn"]
 
 [project.urls]
-homepage = "https://github.com/eriktews/pretalx-llm"
-repository = "https://github.com/eriktews/pretalx-llm.git"
+homepage = "https://github.com/why2025-datenzone/pretalx-llm"
+repository = "https://github.com/why2025-datenzone/pretalx-llm.git"
 
 [project.entry-points."pretalx.plugin"]
 pretalx_llm = "pretalx_llm:PretalxPluginMeta"
