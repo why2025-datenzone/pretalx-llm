@@ -420,9 +420,10 @@ class LlmSimilaritiesBase(LlmBase):
             ]
 
     def annotate_embeddings(self, queryset, model):
-        # Subquery to get the embeddings with matching title and description
+        # Subquery to get the embeddings with matching title, abstract and description
         matching_embeddings = LlmEmbedding.objects.filter(
             submission=OuterRef("pk"),
+            abstract=OuterRef("abstract"),
             description=OuterRef("description"),
             title=OuterRef("title"),
             event_model=model,
@@ -442,7 +443,7 @@ class LlmSimilaritiesBase(LlmBase):
             # The embeddings
             embeddings_data=Subquery(
                 matching_embeddings, output_field=JSONField()
-            )  # Try to match by description
+            )  # Try to match by title, abstract and description
         ).annotate(
             embeddings_data=Coalesce(
                 "embeddings_data", Subquery(recent_embeddings, output_field=JSONField())

@@ -262,6 +262,13 @@ def remove_embeddings(sender, **kwargs):
         ).exclude(
             Q(title=F("submission__title"))
             & Q(
+                Q(abstract=F("submission__abstract"))
+                | (
+                    Q(submission__abstract__isnull=True)
+                    & Q(abstract__isnull=True)
+                )
+            )
+            & Q(
                 Q(description=F("submission__description"))
                 | (
                     Q(submission__description__isnull=True)
@@ -344,6 +351,13 @@ def run_llm_reindex(sender, **kwargs):
                         Q(llmembedding__event_model=F("event__llmeventmodels"))
                         & Q(llmembedding__title=F("title"))
                         & (
+                            Q(llmembedding__abstract=F("abstract"))
+                            | (
+                                Q(llmembedding__abstract__isnull=True)
+                                & Q(abstract__isnull=True)
+                            )
+                        )
+                        & (
                             Q(llmembedding__description=F("description"))
                             | (
                                 Q(llmembedding__description__isnull=True)
@@ -386,6 +400,7 @@ def embed_single_submission(submission: Submission, model_id=None):
             embed = LlmEmbedding.objects.create(
                 submission=submission,
                 title=submission.title,
+                abstract=submission.abstract,
                 description=submission.description,
                 event_model_id=current_model_id,
             )
@@ -395,8 +410,8 @@ def embed_single_submission(submission: Submission, model_id=None):
             continue
         except Exception as e:
             logger.warning(
-                "Failed to create embedding for title: {} description: {}: {}".format(
-                    submission.title, submission.description, e
+                "Failed to create embedding for title: {} abstract: {} description: {}: {}".format(
+                    submission.title, submission.abstract, submission.description, e
                 )
             )
             continue

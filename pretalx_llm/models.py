@@ -65,6 +65,7 @@ class LlmEmbedding(models.Model):
     created = models.DateTimeField(auto_now_add=True, blank=True, null=True)
     submission = models.ForeignKey(Submission, on_delete=models.CASCADE)
     title = models.CharField(max_length=200)
+    abstract = description = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
     embedding = models.JSONField(null=True)
     task_id = models.CharField(max_length=50)

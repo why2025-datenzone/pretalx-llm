@@ -15,7 +15,7 @@ In genreal, the plugin offers the following features:
 
 3. Show a user submissions that are similar to ones the user has already reviewed.
 
-4. Search for submissions based on a textual description of interesting topics. For example a user can search for **enterprise information security** and the plugin will show submissions that match the topic, even though when the submission doesn't have any of the words in the title or description.
+4. Search for submissions based on a textual description of interesting topics. For example a user can search for **enterprise information security** and the plugin will show submissions that match the topic, even though when the submission doesn't have any of the words in the title, abstract, or description.
 
 4. Each reviewer can set some review preferences (a short text that describes what kind of submissions they are interested in, such as **enterprise information security**) and based on those preferences, matching reviewers are then suggested for each submission.
 
@@ -131,7 +131,7 @@ Don't forget to restart Pretalx, including the Celery runner after you changed t
 Models
 ------
 
-Pretalx LLM uses models for embeddings only. In general you can pick any model you want. We recommend that you pick a model with a sufficiently large context window so that the title and description of a submission fit in the context window of the model. Otherwise the model should support all the languages that speakers use for their submissions. In general, models with more parameters yield in better results, but they are slower. When you run your LLM provider on a system with a good GPU or AI hardware accelerator, then more powerful models are a good option. However there are also models that run still well on regular CPUs and still produce good results.
+Pretalx LLM uses models for embeddings only. In general you can pick any model you want. We recommend that you pick a model with a sufficiently large context window so that the title, abstract, and description of a submission fit in the context window of the model. Otherwise the model should support all the languages that speakers use for their submissions. In general, models with more parameters yield in better results, but they are slower. When you run your LLM provider on a system with a good GPU or AI hardware accelerator, then more powerful models are a good option. However there are also models that run still well on regular CPUs and still produce good results.
 
 In general, **snowflake-arctic-embed2** is a good start. Creating an embedding takes just a few seconds (often less) on a moderately fast Ultrabook from 2018 and it can handle common western languages well.
 
