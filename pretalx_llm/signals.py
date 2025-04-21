@@ -263,10 +263,7 @@ def remove_embeddings(sender, **kwargs):
             Q(title=F("submission__title"))
             & Q(
                 Q(abstract=F("submission__abstract"))
-                | (
-                    Q(submission__abstract__isnull=True)
-                    & Q(abstract__isnull=True)
-                )
+                | (Q(submission__abstract__isnull=True) & Q(abstract__isnull=True))
             )
             & Q(
                 Q(description=F("submission__description"))

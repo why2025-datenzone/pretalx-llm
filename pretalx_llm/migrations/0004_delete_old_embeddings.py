@@ -6,10 +6,10 @@ from django.db import migrations
 def delete_old_embeddings(apps, schema_editor):
     """
     _Delete all embeddings in the database_
-    
+
     Previously, embeddings were based on the title and description. The previous (0003_llmembedding_abstract) migration adds the abstract as well. This migration deletes all existing embeddings in the database. They will be automatically regenerated using the new method that uses the abstract as well.
     """
-    embeddings = apps.get_model('pretalx_llm', 'LlmEmbedding')
+    embeddings = apps.get_model("pretalx_llm", "LlmEmbedding")
     embeddings.objects.all().delete()
 
 
@@ -19,6 +19,4 @@ class Migration(migrations.Migration):
         ("pretalx_llm", "0003_llmembedding_abstract"),
     ]
 
-    operations = [
-        migrations.RunPython(delete_old_embeddings)
-    ]
+    operations = [migrations.RunPython(delete_old_embeddings)]

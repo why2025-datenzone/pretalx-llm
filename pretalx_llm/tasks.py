@@ -29,7 +29,9 @@ def embed_submission(id):
             logger.warning("Embedding already present for id {}".format(id))
             return
         model_provider = get_provider()
-        to_input = "Title: {}\n\nAbstract: {}\n\nDescription: {}".format(embed.title, (embed.abstract or ""), (embed.description or ""))
+        to_input = "Title: {}\n\nAbstract: {}\n\nDescription: {}".format(
+            embed.title, (embed.abstract or ""), (embed.description or "")
+        )
         logger.debug("Input for embedding is: {}".format(to_input))
         result = model_provider.get_embedding(
             embed.event_model.name.provider, embed.event_model.name.name, to_input
