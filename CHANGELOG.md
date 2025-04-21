@@ -1,3 +1,9 @@
+# Version 0.3.0
+
+* Make the embedding of submissions based on the title, abstract, and description. Previously, the abstract was not used. The embeddings need to be regenerated, so the existing embeddings are deleted when the database is migrated.
+* Depend on *umap-learn* instead of *umap*. Previously the project depended on the wrong package.
+* Updated the project URL.
+
 # Version 0.2.0
 
 * Reviewers can now indicate their preferences for submissions in text form.
