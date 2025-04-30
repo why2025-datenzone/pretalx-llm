@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 
 class LlmBase(PermissionRequired):
 
-    permission_required = "orga.view_orga_area"
+    permission_required = "orga.change_submissions"
 
     @cached_property
     def models(self):

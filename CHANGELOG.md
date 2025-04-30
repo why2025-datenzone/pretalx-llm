@@ -1,3 +1,7 @@
+# Version 0.4.0
+
+* Make the plugin only available for users with orga.change_submissions permissions
+
 # Version 0.3.1
 
 * Reformat source code
