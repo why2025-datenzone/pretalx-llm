@@ -1,3 +1,7 @@
+# Version 0.4.1
+
+* Depend only on the latest stable release of Pretalx
+
 # Version 0.4.0
 
 * Make the plugin only available for users with orga.change_submissions permissions
