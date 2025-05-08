@@ -8,7 +8,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ("event", "0038_eventextralink"),
+        ("event", "0036_alter_event_header_image_alter_event_logo"),
         ("pretalx_llm", "0001_initial"),
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
     ]
