@@ -1,3 +1,7 @@
+# Version 0.4.2
+
+* Fix latest release, we were still depending on Pretalx main
+
 # Version 0.4.1
 
 * Depend only on the latest stable release of Pretalx

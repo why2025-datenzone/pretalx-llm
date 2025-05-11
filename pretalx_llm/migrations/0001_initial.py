@@ -9,7 +9,7 @@ class Migration(migrations.Migration):
     initial = True
 
     dependencies = [
-        ("event", "0038_eventextralink"),
+        ("event", "0036_alter_event_header_image_alter_event_logo"),
         ("submission", "0077_answeroption_position"),
     ]
 
