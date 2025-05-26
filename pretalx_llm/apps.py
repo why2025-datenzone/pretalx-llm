@@ -22,7 +22,7 @@ class LlmApp(AppConfig):
     def ready(self):
         from . import signals  # NOQA
         from . import tasks  # NOQA
-	from . import comparison # NOQA
+        from . import comparison # NOQA
 
         # from . import urls
         self.provider = LlmProvider()
