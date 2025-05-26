@@ -20,9 +20,9 @@ class LlmApp(AppConfig):
         category = "FEATURE"
 
     def ready(self):
+        from . import comparison  # NOQA
         from . import signals  # NOQA
         from . import tasks  # NOQA
-        from . import comparison  # NOQA
 
         # from . import urls
         self.provider = LlmProvider()
