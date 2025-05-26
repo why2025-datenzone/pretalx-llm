@@ -1,3 +1,7 @@
+# Version 0.4.3
+
+* Load numpy and umap on application startup. This makes startups slower and pretalx will consume more memory, but requests will be served faster.
+
 # Version 0.4.2
 
 * Fix latest release, we were still depending on Pretalx main
