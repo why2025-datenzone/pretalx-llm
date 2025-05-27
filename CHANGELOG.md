@@ -1,3 +1,7 @@
+# Version 0.4.5
+
+* Also increase version number in code
+
 # Version 0.4.4.
 
 * Correctly sort imports
