@@ -27,6 +27,7 @@ from pretalx.orga.views.submission import ReviewerSubmissionFilter
 from pretalx.submission.forms.submission import SubmissionFilterForm
 from pretalx.submission.models import Submission
 from pretalx.submission.models.review import Review
+from pretalx.submission.rules import limit_for_reviewers
 
 from . import cache_utils
 from .comparison import SubmissionComparison
@@ -61,7 +62,7 @@ logger = logging.getLogger(__name__)
 
 class LlmBase(PermissionRequired):
 
-    permission_required = "orga.change_submissions"
+    permission_required = "submission.update_submission"
 
     @cached_property
     def models(self):
@@ -171,7 +172,7 @@ class LLmGlobalSettingsView(PermissionRequired, TemplateView):
     Server admin view, used to import, enable and disable models.
     """
 
-    permission_required = "person.is_administrator"
+    permission_required = "person.administrator_user"
     template_name = "pretalx_llm/globalsettings.html"
 
     def post(self, request):
@@ -266,15 +267,17 @@ class LlmSimilaritiesBase(LlmBase):
     Base class for almost every regular view in Pretalx LLM.
     """
 
-    PERM_VIEW_SPEAKERS = "orga.view_speakers"
-    permission_required = "orga.view_orga_area"
+    PERM_VIEW_SPEAKERS = "person.orga_list_speakerprofile"
+    permission_required = "event.orga_access_event"
 
     usable_states = None
 
     @context
     @cached_property
     def can_see_all_reviews(self):
-        return self.request.user.has_perm("orga.view_all_reviews", self.request.event)
+        return self.request.user.has_perm(
+            "submission.list_all_review", self.request.event
+        )
 
     @cached_property
     def independent_categories(self):
@@ -360,13 +363,18 @@ class LlmSimilaritiesBase(LlmBase):
             .select_related("submission_type", "event", "track")
             .prefetch_related("speakers")
         )
-        if "is_reviewer" in rfh.user_permissions or for_review:
+        if rfh.is_only_reviewer:
+            queryset = limit_for_reviewers(
+                queryset, self.request.event, self.request.user, self.limit_tracks
+            )
+        if for_review or "is_reviewer" in self.request.user.get_permissions_for_event(
+            self.request.event
+        ):
             assigned = self.request.user.assigned_reviews.filter(
                 event=self.request.event, pk=OuterRef("pk")
             )
             queryset = queryset.annotate(is_assigned=Exists(Subquery(assigned)))
-        if rfh.user_permissions == {"is_reviewer"}:
-            queryset = rfh.limit_for_reviewers(queryset)
+
         return queryset
 
     def compute_review(self, submission):
@@ -626,7 +634,7 @@ class LlmSimilaritiesGraphJson(LlmSimilaritiesGraphGeneral, View):
 
     @cached_property
     def can_review(self):
-        if self.request.user.has_perm("orga.perform_reviews", self.request.event):
+        if self.request.user.has_perm("submission.create_review", self.request.event):
             return True
         return False
 
@@ -984,7 +992,7 @@ class LlmSettingsView(PermissionRequired, TemplateView):
     Enable or disable models for an event.
     """
 
-    permission_required = "orga.change_settings"
+    permission_required = "event.update_event"
     template_name = "pretalx_llm/settings.html"
 
     def __init__(self, *args, **kwargs):

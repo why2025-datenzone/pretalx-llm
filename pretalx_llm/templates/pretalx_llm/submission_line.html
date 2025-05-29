@@ -2,7 +2,7 @@
 {% load i18n %}
 {% load rules %}
 
-{% has_perm "orga.view_speakers" request.user request.event as can_view_speakers %}
+{% has_perm "person.orga_list_speakerprofile" request.user request.event as can_view_speakers %}
 
 <a href="{% if can_review %}{{ submission.orga_urls.reviews }}{% else %}{{ submission.orga_urls.base }}{% endif %}">
     {% if can_view_speakers %}

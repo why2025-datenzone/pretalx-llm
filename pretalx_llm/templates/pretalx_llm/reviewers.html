@@ -5,7 +5,7 @@
 {% block extra_title %}Pretalx LLM Reviewer suggestions :: {% endblock extra_title %}
 
 {% block content %}
-    {% has_perm "orga.perform_reviews" request.user request.event as can_review %}
+    {% has_perm "submission.create_review" request.user request.event as can_review %}
 
     {% include "pretalx_llm/llm_reviewers_form.html" %}
 

@@ -54,7 +54,7 @@ def admin_menu(sender, request, **kwargs):
 
 @receiver(nav_event)
 def pretalx_llm_settings(sender, request, **kwargs):
-    if not request.user.has_perm("orga.view_orga_area", request.event):
+    if not request.user.has_perm("event.orga_access_event", request.event):
         return []
     url = resolve(request.path_info)
     result = [
@@ -147,7 +147,7 @@ def pretalx_llm_settings_settings(sender, request, **kwargs):
     """
     Create the menu entry that links to the per event LLM settings.
     """
-    if not request.user.has_perm("orga.change_settings", request.event):
+    if not request.user.has_perm("event.update_event", request.event):
         return []
     return [
         {

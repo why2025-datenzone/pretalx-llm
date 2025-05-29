@@ -1,3 +1,8 @@
+# Version 0.5.0
+
+* First release for Pretalx 2025.1.0
+* Renamed permissions to align with the new upstream release
+
 # Version 0.4.5
 
 * Also increase version number in code
