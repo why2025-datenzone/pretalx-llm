@@ -1,4 +1,6 @@
+import hashlib
 import itertools
+import json
 import logging
 from datetime import timedelta
 
@@ -372,6 +374,11 @@ def run_llm_reindex(sender, **kwargs):
         logger.warning("Exception: {}".format(e))
 
 
+def _compute_content_hash(title, abstract, description):
+    to_hash = json.dumps([title, abstract, description])
+    return hashlib.sha256(to_hash.encode("utf-8")).hexdigest()
+
+
 def embed_single_submission(submission: Submission, model_id=None):
     """
     _Generate embeddings for a single submission._
@@ -399,6 +406,9 @@ def embed_single_submission(submission: Submission, model_id=None):
                 title=submission.title,
                 abstract=submission.abstract,
                 description=submission.description,
+                contenthash=_compute_content_hash(
+                    submission.title, submission.abstract, submission.description
+                ),
                 event_model_id=current_model_id,
             )
             embed.save()

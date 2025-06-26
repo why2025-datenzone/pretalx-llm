@@ -56,7 +56,7 @@ class LlmEmbedding(models.Model):
     class Meta:
         constraints = [
             models.UniqueConstraint(
-                fields=["event_model", "submission", "title", "description"],
+                fields=["event_model", "submission", "contenthash"],
                 name="unique_event_submission_model",
             )
         ]
@@ -67,6 +67,7 @@ class LlmEmbedding(models.Model):
     title = models.CharField(max_length=200)
     abstract = description = models.TextField(null=True, blank=True)
     description = models.TextField(null=True, blank=True)
+    contenthash = models.CharField(max_length=200, null=False)
     embedding = models.JSONField(null=True)
     task_id = models.CharField(max_length=50)
 
