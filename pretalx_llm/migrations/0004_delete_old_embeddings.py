@@ -19,4 +19,6 @@ class Migration(migrations.Migration):
         ("pretalx_llm", "0003_llmembedding_abstract"),
     ]
 
-    operations = [migrations.RunPython(delete_old_embeddings)]
+    operations = [
+        migrations.RunPython(delete_old_embeddings, reverse_code=delete_old_embeddings)
+    ]
