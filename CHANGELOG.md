@@ -1,3 +1,7 @@
+# Version 0.5.1
+
+* Store the hash of the content of a submission with the embedding and just require that the hash is unique. This fixes an issue when using Postgres that may generate error messages like "Values larger than 1/3 of a buffer page cannot be indexed.".
+
 # Version 0.5.0
 
 * First release for Pretalx 2025.1.0
